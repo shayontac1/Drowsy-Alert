@@ -75,6 +75,7 @@ public class MyActivity extends Activity  implements PromptDialogFragment.Dialog
     private LocationManager locationManager;
     // How many drowsies to we have in a row?
     private int drowsyCount;
+    private boolean hasStopped = false;
 
     public static double[] data1 = {0.54,0.86,-0.95,0.82,-0.1,0.79,-0.39,0.28,0.94,
             -0.88,-0.3,-0.95,-0.38,0.79,-0.35,0.78,-0.52,0.05,0.07,0.17,
@@ -506,9 +507,10 @@ public class MyActivity extends Activity  implements PromptDialogFragment.Dialog
     @Override
     public void onDialogPositiveClick(DialogFragment dialog) {
         LEVEL_ALARM = false;
+        hasStopped = true;
+        hasPrompted = false;
         drowsyCount = 0;
         r.stop();
-        tts = null;
     }
 
     public void onPromptDialog() {
@@ -519,31 +521,39 @@ public class MyActivity extends Activity  implements PromptDialogFragment.Dialog
         new CountDownTimer(25000, 1000) {
 
             public void onTick(long msUntilFinished) {
-
-                if ((msUntilFinished / 1000) == 15) {
-                    onSpeak("Please wake up");
-                }
-                if ((msUntilFinished / 1000) == 12) {
-                    onAlarm();
+                if (!hasStopped) {
+                    if ((msUntilFinished / 1000) == 15) {
+                        onSpeak("Please wake up");
+                    }
+                    if ((msUntilFinished / 1000) == 12) {
+                        onAlarm();
+                    }
                 }
             }
 
             public void onFinish() {
-                r.stop();
-                onSpeak("Messaging Emergency Contacts");
 
-                GPSlocation = "(" + locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLatitude()
-                        + ", " + locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLongitude() + ")";
-                Log.w("LOCATION", GPSlocation);
-                String message = "Hi, I" +
-                        " might have fallen asleep while driving and may require medical " +
-                        "attention! Here is my location: " + GPSlocation;
+                if (!hasStopped) {
+                    r.stop();
+                    onSpeak("Messaging Emergency Contacts");
 
-                ArrayList<String> list = obtainFavorites();
-                for (int i = 0; i < list.size(); i++) {
-                    String number = list.get(i);
-                    SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
+                    GPSlocation = "(" + locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLatitude()
+                            + ", " + locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLongitude() + ")";
+                    Log.w("LOCATION", GPSlocation);
+                    String message = "Hi, I" +
+                            " might have fallen asleep while driving and may require medical " +
+                            "attention! Here is my location: " + GPSlocation;
+
+                    ArrayList<String> list = obtainFavorites();
+                    for (int i = 0; i < list.size(); i++) {
+                        String number = list.get(i);
+                        SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
+                    }
                 }
+                else {
+                    hasStopped = false;
+                }
+
 
             }
         }.start();
